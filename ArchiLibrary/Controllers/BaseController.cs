@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace ArchiLibrary.controllers
 {
     [ApiController]
-    [Route("api/v{version:apiVersion}/[controller]")]
+    [Route("catalog/v{version:apiVersion}/[controller]")]
     [ApiVersion("1.0")]
     // adding new version
     // [ApiVersion("2.0")]
