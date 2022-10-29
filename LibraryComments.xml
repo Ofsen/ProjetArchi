@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>ArchiLibrary</name>
+    </assembly>
+    <members>
+        <member name="M:ArchiLibrary.controllers.BaseController`2.GetAll">
+            <summary>
+            Get all data
+            </summary>
+            <returns>200 if OK</returns>
+        </member>
+        <member name="M:ArchiLibrary.controllers.BaseController`2.PostItem(`1)">
+            <summary>
+            bonjour
+            </summary>
+            <param name="item">l'objet a insérer en base</param>
+            <returns>201 si OK, 400...</returns>
+        </member>
+    </members>
+</doc>
