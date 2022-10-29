@@ -11,7 +11,6 @@ using ArchiLibrary.controllers;
 
 namespace ArchiLog.Controllers
 {
-    [Route("api/[controller]")]
     public class CarsController : BaseController<ArchiLogDbContext, Car>
     {
         public CarsController(ArchiLogDbContext context):base(context)

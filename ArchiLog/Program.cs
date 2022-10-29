@@ -1,6 +1,9 @@
 using ArchiLog.Data;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using System.Configuration;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,6 +35,21 @@ var logger = new LoggerConfiguration().ReadFrom.Configuration(builder.Configurat
 
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(logger);
+
+// Versioning
+builder.Services.AddApiVersioning(option =>
+{
+    option.AssumeDefaultVersionWhenUnspecified = true;
+    // if not specified, default version is 1.0
+    option.DefaultApiVersion = new Microsoft.AspNetCore.Mvc.ApiVersion(1, 0);
+    option.ReportApiVersions = true;
+
+    // We can add these to accept headers, query strings and media type for our versioning control
+    //option.ApiVersionReader = ApiVersionReader.Combine(
+    //    new QueryStringApiVersionReader("api-version"),
+    //    new HeaderApiVersionReader("X-Version"),
+    //    new MediaTypeApiVersionReader("ver"));
+});
 
 var app = builder.Build();
 

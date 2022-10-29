@@ -12,6 +12,16 @@ using System.Threading.Tasks;
 namespace ArchiLibrary.controllers
 {
     [ApiController]
+    [Route("api/v{version:apiVersion}/[controller]")]
+    [ApiVersion("1.0")]
+    // adding new version
+    // [ApiVersion("2.0")]
+
+    // set a version to deprecated
+    // [ApiVersion("1.0", Deprecated = true)]
+
+    // set specific methode to a specific version
+    // [MapToApiVersion("2.0")]
     public abstract class BaseController<TContext, TModel> : ControllerBase where TContext : BaseDbContext where TModel : BaseModel
     {
         protected readonly TContext _context;
