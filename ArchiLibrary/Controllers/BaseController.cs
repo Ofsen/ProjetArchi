@@ -51,8 +51,11 @@ namespace ArchiLibrary.controllers
 
             IQueryable<TModel> queryable = _context.Set<TModel>().Where(x => x.Active);
 
+            // check if desc query exists
+            Boolean desc = HttpContext.Request.Query.ContainsKey("desc");
+
             // Sorting
-            queryable = queryable.Sort(myParams);
+            queryable = queryable.Sort(myParams, desc);
 
             if(!string.IsNullOrWhiteSpace(myParams.Range))
             {
