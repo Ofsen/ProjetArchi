@@ -24,8 +24,10 @@ namespace ArchiLibrary.Extensions
                 var lambda = Expression.Lambda<Func<TModel, object>>(o, parameter);
 
                 // use the lambda expression
-                return query.OrderBy(lambda);
-            } else if (!string.IsNullOrWhiteSpace(myParams.Desc))
+                query = query.OrderBy(lambda);
+            }
+            
+            if (!string.IsNullOrWhiteSpace(myParams.Desc))
             {
                 string champ = myParams.Desc;
 
@@ -37,9 +39,10 @@ namespace ArchiLibrary.Extensions
                 var lambda = Expression.Lambda<Func<TModel, object>>(o, parameter);
 
                 // use the lambda expression
-                return query.OrderByDescending(lambda);
-            } else
-                return (IOrderedQueryable<TModel>)query;
+                query = query.OrderByDescending(lambda);
+            } 
+
+            return (IOrderedQueryable<TModel>)query;
         }
     }
 }

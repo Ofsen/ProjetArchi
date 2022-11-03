@@ -4,6 +4,7 @@ using ArchiLibrary.Extensions.Models;
 using ArchiLibrary.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
@@ -43,14 +44,22 @@ namespace ArchiLibrary.controllers
         public async Task<IEnumerable<TModel>> GetAll([FromQuery] ParamsModel myParams)
         {
             _logger.LogInformation("LOG : Get all starting");
+
             IQueryable<TModel> queryable = _context.Set<TModel>().Where(x => x.Active);
-            
-            if(myParams != null)
+
+            // Sorting
+            queryable = queryable.Sort(myParams);
+
+            if(!string.IsNullOrWhiteSpace(myParams.Range))
             {
-                queryable = queryable.Sort(myParams);
+                _logger.LogInformation("LOG : Get all starting - Pagination");
+                var pagination = myParams.Range.Split("-");
+                int perPage = int.Parse(pagination[1]) - int.Parse(pagination[0]);
+                // ( currentPage - 1 ) * perPage
+                queryable = queryable.Skip(int.Parse(pagination[0])).Take(perPage);
             }
 
-
+            _logger.LogInformation("LOG : Get all finished");
             return await queryable.ToListAsync();
         }
 

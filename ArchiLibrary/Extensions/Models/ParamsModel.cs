@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ArchiLibrary.Extensions.Models
+﻿namespace ArchiLibrary.Extensions.Models
 {
     public class ParamsModel
     {
@@ -12,4 +6,6 @@ namespace ArchiLibrary.Extensions.Models
         public string? Desc { get; set; }
         public string? Range { get; set; }
     }
+
+    // api/v1/brand?asc=name&desc=id&range=0-10
 }
