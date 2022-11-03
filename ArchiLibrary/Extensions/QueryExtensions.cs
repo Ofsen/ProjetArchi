@@ -1,4 +1,5 @@
 ﻿using ArchiLibrary.Extensions.Models;
+using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,35 +13,62 @@ namespace ArchiLibrary.Extensions
     {
         public static IOrderedQueryable<TModel> Sort<TModel>(this IQueryable<TModel> query, ParamsModel myParams)
         {
-            if (!string.IsNullOrWhiteSpace(myParams.Asc))
+            if (!string.IsNullOrWhiteSpace(myParams.Sort))
             {
-                string champ = myParams.Asc;
+                var ascSortingParams = myParams.Sort.Split(",");
 
-                // create a lambda expression
-                var parameter = Expression.Parameter(typeof(TModel), "x");
-                var property = Expression.Property(parameter, champ);
+                // ?sort=name&desc=name
 
-                var o = Expression.Convert(property, typeof(object));
-                var lambda = Expression.Lambda<Func<TModel, object>>(o, parameter);
+                //Where(x => x.Name && x.Slogan)
 
-                // use the lambda expression
-                query = query.OrderBy(lambda);
+                if(ascSortingParams.Length > 1)
+                {
+                    foreach (var p in ascSortingParams)
+                    {
+                        string champ = myParams.Sort;
+
+                        // create a lambda expression
+                        var parameter = Expression.Parameter(typeof(TModel), "x");
+                        var property = Expression.Property(parameter, champ);
+
+                        var o = Expression.Convert(property, typeof(object));
+                        var lambda = Expression.Lambda<Func<TModel, object>>(o, parameter);
+
+                        // use the lambda expression
+                        query = query.OrderBy(lambda);
+                    }
+                } else
+                {
+
+                }
             }
             
             if (!string.IsNullOrWhiteSpace(myParams.Desc))
             {
-                string champ = myParams.Desc;
+                var descSortingParams = myParams.Desc.Split(",");
 
-                // create a lambda expression
-                var parameter = Expression.Parameter(typeof(TModel), "x");
-                var property = Expression.Property(parameter, champ);
+                foreach (var p in descSortingParams)
+                {
+                    string champ = myParams.Desc;
 
-                var o = Expression.Convert(property, typeof(object));
-                var lambda = Expression.Lambda<Func<TModel, object>>(o, parameter);
+                    // create a lambda expression
+                    var parameter = Expression.Parameter(typeof(TModel), "x");
+                    var property = Expression.Property(parameter, champ);
 
-                // use the lambda expression
-                query = query.OrderByDescending(lambda);
-            } 
+                    var o = Expression.Convert(property, typeof(object));
+                    var lambda = Expression.Lambda<Func<TModel, object>>(o, parameter);
+
+                    // use the lambda expression
+                    if (!string.IsNullOrWhiteSpace(myParams.Sort))
+                    {
+                        //query = query.ThenByDescending(lambda);
+                    }
+                    else
+                    {
+                        query = query.OrderByDescending(lambda);
+                    }
+                }
+            }
 
             return (IOrderedQueryable<TModel>)query;
         }

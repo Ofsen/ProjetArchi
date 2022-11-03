@@ -2,7 +2,7 @@
 {
     public class ParamsModel
     {
-        public string? Asc { get; set; }
+        public string? Sort { get; set; }
         public string? Desc { get; set; }
         public string? Range { get; set; }
     }
