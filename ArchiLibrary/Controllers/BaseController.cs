@@ -1,13 +1,12 @@
 ﻿using ArchiLibrary.Data;
+using ArchiLibrary.Extensions;
+using ArchiLibrary.Extensions.Models;
 using ArchiLibrary.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
 
 namespace ArchiLibrary.controllers
 {
@@ -22,13 +21,15 @@ namespace ArchiLibrary.controllers
 
     // set specific methode to a specific version
     // [MapToApiVersion("2.0")]
-    public abstract class BaseController<TContext, TModel> : ControllerBase where TContext : BaseDbContext where TModel : BaseModel
+    public abstract class BaseController<TContext, TModel, TController> : ControllerBase where TContext : BaseDbContext where TModel : BaseModel
     {
         protected readonly TContext _context;
+        protected readonly ILogger<TController> _logger;
 
-        public BaseController(TContext context)
+        public BaseController(TContext context, ILogger<TController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         /// <summary>
@@ -39,9 +40,18 @@ namespace ArchiLibrary.controllers
         [HttpGet]
         [Produces("application/json")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IEnumerable<TModel>> GetAll()
+        public async Task<IEnumerable<TModel>> GetAll([FromQuery] ParamsModel myParams)
         {
-            return await _context.Set<TModel>().Where(x => x.Active).ToListAsync();
+            _logger.LogInformation("LOG : Get all starting");
+            IQueryable<TModel> queryable = _context.Set<TModel>().Where(x => x.Active);
+            
+            if(myParams != null)
+            {
+                queryable = queryable.Sort(myParams);
+            }
+
+
+            return await queryable.ToListAsync();
         }
 
         /// <summary>

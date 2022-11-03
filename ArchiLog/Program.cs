@@ -36,6 +36,8 @@ var logger = new LoggerConfiguration().ReadFrom.Configuration(builder.Configurat
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(logger);
 
+logger.Information("LOG : Initialisation");
+
 // Versioning
 builder.Services.AddApiVersioning(option =>
 {
@@ -52,6 +54,7 @@ builder.Services.AddApiVersioning(option =>
 });
 
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
