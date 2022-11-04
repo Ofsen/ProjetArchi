@@ -46,14 +46,23 @@ namespace ArchiLibrary.controllers
         [Produces("application/json")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<IEnumerable<TModel>>> GetAll([FromQuery] ParamsModel myParams)
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetAll([FromQuery] ParamsModel myParams)
         {
+            // FILTRES
+                //this.Request.Query
+                //typeof(TModel).GetProperty()
+
+            return await _context.Set<TModel>().Select(x => new { x.ID, x.CreatedAt }).ToListAsync();
+
             _logger.LogInformation("LOG : Get all starting");
             IQueryable<TModel> queryable = _context.Set<TModel>().Where(x => x.Active);
 
+            // partial response
+            if (!string.IsNullOrWhiteSpace(myParams.Fields))
+                queryable = queryable.PartialResponse(myParams.Fields);
+
             // check if desc query exists
             Boolean desc = HttpContext.Request.Query.ContainsKey("desc");
-
             // Sorting
             queryable = queryable.Sort(myParams, desc);
 
