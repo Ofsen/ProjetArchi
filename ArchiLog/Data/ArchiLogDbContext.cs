@@ -1,5 +1,4 @@
 ﻿using ArchiLibrary.Data;
-using ArchiLibrary.Models;
 using ArchiLog.Models;
 using Microsoft.EntityFrameworkCore;
 

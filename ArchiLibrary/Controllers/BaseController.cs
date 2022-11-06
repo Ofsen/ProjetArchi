@@ -40,6 +40,7 @@ namespace ArchiLibrary.controllers
         /// Get all data
         /// </summary>
         /// <response code="200">An array of objects</response>
+        /// <response code="400">Bad request</response>
         /// <returns>An array of objects</returns>
         [HttpGet]
         [Produces("application/json")]
@@ -48,7 +49,6 @@ namespace ArchiLibrary.controllers
         public async Task<ActionResult<IEnumerable<TModel>>> GetAll([FromQuery] ParamsModel myParams)
         {
             _logger.LogInformation("LOG : Get all starting");
-
             IQueryable<TModel> queryable = _context.Set<TModel>().Where(x => x.Active);
 
             // check if desc query exists
@@ -67,17 +67,10 @@ namespace ArchiLibrary.controllers
                     return BadRequest();
 
                 int count = queryable.Count();
-                queryable = queryable.Skip(int.Parse(pagination[0])).Take(perPage);
+                if (int.Parse(pagination[1]) > count)
+                    return BadRequest();
 
-                //                                                              count=10    -> 10/3 = 3.333 -> 3 * 3 = 9    -> 9 + 1 = 10-12
-                //                                                              count=9     -> 9/3 = 3      -> 3 * 3 = 9    -> 9 + 1 = 10
-                //                                                              count=11    -> 11/3 = 3.66  -> 3 * 3 = 9    -> 9 + 1 = 10-12
-                //                                                              count=13    -> 13/3 = 4.33  -> 4 * 3 = 12   -> 12 + 1 = 13-15
-                // https://localhost:7157/catalog/v1/Brands?Range=0-2 current   0-2 perPage=3       0-5 perPage=6
-                // https://localhost:7157/catalog/v1/Brands?Range=2-4 suiv      3-5 -> 6-9 -> 10-12                 6-11 -> 12-18
-                // https://localhost:7157/catalog/v1/Brands?Range=0-2 first     0-2
-                // https://localhost:7157/catalog/v1/Brands?Range=4-6 last      -10
-                // https://localhost:7157/catalog/v1/Brands?Range=1-3 prev      -10
+                queryable = queryable.Skip(int.Parse(pagination[0])).Take(perPage);
 
                 string headerLinks = GenerateHeaderLinks(pagination, perPage, count);
 
@@ -220,42 +213,43 @@ namespace ArchiLibrary.controllers
         private string GenerateHeaderLinks(string[] pagination, int perPage, int count)
         {
             string baseUrl = HttpContext.Request.Host + HttpContext.Request.Path + "?range=";
+            int totalCount = (int)count;
 
             // building first url
             string first = baseUrl + "0-" + (perPage - 1) + "; rel=\"first\"";
 
             // bulding last url
             string last = baseUrl;
-            if (count % perPage == 0)
-            {
-                last += (count - perPage) + "-" + (count - 1);
-            }
-            else
-            {
-                last += (Math.Floor((decimal)count / perPage) * perPage) + "-" + (Math.Ceiling((decimal)count / perPage) * perPage - 1);
-            }
-            last += "; rel=\"last\"";
+            last += (count - perPage) + "-" + (count - 1) + "; rel=\"last\"";
 
             // building next url
             string next = baseUrl;
-            if ((int.Parse(pagination[1]) + 1) >= count)
+            if ((int.Parse(pagination[1])) == (totalCount - 1))
             {
-                next = last;
+                next += HttpContext.Request.Host + HttpContext.Request.Path + HttpContext.Request.QueryString.Value;
+            }
+            else if ((int.Parse(pagination[1]) + perPage) > (totalCount - 1))
+            {
+                next += (int.Parse(pagination[1]) + 1) + "-" + (totalCount - 1);
             }
             else
             {
-                next += (int.Parse(pagination[1]) + 1) + "-" + (perPage + int.Parse(pagination[1])) + "; rel=\"next\"";
+                next += (int.Parse(pagination[1]) + 1) + "-" + ((int.Parse(pagination[1]) + 1) + perPage);
             }
+            next += "; rel=\"next\"";
 
             // building prev url
             string prev = baseUrl;
-            if (pagination[0] == "0")
+            if ((int.Parse(pagination[0])) == 0) 
             {
                 prev = HttpContext.Request.Host + HttpContext.Request.Path + HttpContext.Request.QueryString.Value;
+            } else if ((int.Parse(pagination[0]) - perPage) < 0)
+            {
+                prev = baseUrl + "0-" + (int.Parse(pagination[0]) - 1);
             }
             else
             {
-                prev += +(int.Parse(pagination[0]) - perPage) + "-" + (int.Parse(pagination[0]) - 1);
+                prev += (int.Parse(pagination[0]) - perPage) + "-" + (int.Parse(pagination[0]) - 1);
             }
             prev += "; rel=\"prev\"";
 

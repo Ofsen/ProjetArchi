@@ -107,5 +107,23 @@ namespace ArchiLibrary.Extensions
 
             return localQuery;
         }
-    }
+
+        public static IOrderedQueryable<TModel> PartialResearch(this IQueryable<TModel> query, PartialSearchParams myParams)
+        {
+
+            if (!string.IsNullOrWhiteSpace(myParams.Fields))
+            {
+                var ascSortingParams = myParams.Fields.Split(",");
+                foreach(var field in ascSortingParams)
+                {
+                    // create a lambda expression
+                    var parameterIte = Expression.Parameter(typeof(TModel), "x");
+                    var propertyIte = Expression.Property(parameterIte, field);
+
+                    var oIte = Expression.Convert(propertyIte, typeof(object));
+                    var lambdaIte = Expression.Lambda<Func<TModel, object>>(oIte, parameterIte);
+                    query = query.
+                }
+            }
+        }
 }
