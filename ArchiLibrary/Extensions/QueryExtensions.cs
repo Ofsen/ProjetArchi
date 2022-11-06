@@ -3,8 +3,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
+using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,9 +28,10 @@ namespace ArchiLibrary.Extensions
 
                 // create a lambda expression
                 var parameter = Expression.Parameter(typeof(TModel), "x");
-                var property = Expression.Property(parameter, champ);
 
+                var property = Expression.Property(parameter, champ);
                 var o = Expression.Convert(property, typeof(object));
+
                 var lambda = Expression.Lambda<Func<TModel, object>>(o, parameter);
 
                 // use the lambda expression
@@ -97,9 +101,10 @@ namespace ArchiLibrary.Extensions
 
                         // create a lambda expression
                         var parameterIte = Expression.Parameter(typeof(TModel), "x");
-                        var propertyIte = Expression.Property(parameterIte, champIte);
 
+                        var propertyIte = Expression.Property(parameterIte, champIte);
                         var oIte = Expression.Convert(propertyIte, typeof(object));
+                        
                         var lambdaIte = Expression.Lambda<Func<TModel, object>>(oIte, parameterIte);
 
                         // use the lambda expression
@@ -111,20 +116,49 @@ namespace ArchiLibrary.Extensions
             return localQuery;
         }
 
-        public static IQueryable<TModel> PartialResponse<dynamic>(this IQueryable<TModel> query, String fields)
+        public static IQueryable<TModel> PartialResponse<TModel>(this IQueryable<TModel> query, String fields)
         {
-            var ascSortingParams = fields.Split(",");
-            foreach (var field in ascSortingParams)
-            {
-                // create a lambda expression
-                var parameter = Expression.Parameter(typeof(TModel), "x");
-                var properties = 
-                    
-                var o = Expression.Convert(property, typeof(object));
-                var lambda = Expression.Lambda<Func<TModel, int, TModel>>(o, parameter);
-                query = query.Select(lambda);
-            }
-            return query;
+            var fieldsArray = fields.Split(",", StringSplitOptions.RemoveEmptyEntries);
+            
+            // creates: parameter x with the type dynamic
+            var parameter = Expression.Parameter(typeof(TModel), "x");
+
+            // creates: [ x.Name, x.ID ... ]
+            var properties = fieldsArray.Select(x => Expression.Property(parameter, x));
+
+            // creates: foreach elem do: Name = elem.Name
+            var bindings = properties.Select(x => Expression.Bind(x.Member, x));
+
+            // creates: dynamic object
+            //var dynamicObject = ;
+
+            // creates: new { Name = x.Name, ID = x.ID ... }
+            var dict = DynamicClassFactory.CreateType(fieldsArray.Select(f => typeof(TModel).GetProperty(f, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase))
+                        .Select(p => new DynamicProperty(p.Name, p.PropertyType))
+                        .ToList(), false);
+
+            var newStuff = Expression.New(dict);
+            var members = Expression.MemberInit(newStuff, bindings);
+            //var members = Expression.MemberInit(Expression.New(typeof(dynamic)), bindings);
+
+            // creates: x => new { Name = x.Name, ID = x.ID ... }
+            var lambda = Expression.Lambda<Func<TModel, dynamic>>(members, parameter);
+
+            return (dynamic)query.Select(lambda);
+
+            //var properties = fieldsArray
+            //            .Select(f => typeof(TModel).GetProperty(f, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase))
+            //            .Select(p => new DynamicProperty(p.Name, p.PropertyType))
+            //            .ToList();
+
+            //var resultType = DynamicClassFactory.CreateType(properties, false);
+            //var bindings = properties.Select(p => Expression.Bind(resultType.GetProperty(p.Name), Expression.Property(parameter, p.Name)));
+            //var result = Expression.MemberInit(Expression.New(resultType), bindings);
+
+            //var lambda = Expression.Lambda<Func<TModel, dynamic>>(result, parameter);
+            //query = (dynamic)query.Select(lambda);
+
+            //return query;
         }
     }
 }
