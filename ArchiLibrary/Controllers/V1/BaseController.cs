@@ -12,19 +12,17 @@ using Microsoft.Extensions.Primitives;
 using System.Linq.Expressions;
 using System.Net;
 
-namespace ArchiLibrary.controllers
+namespace ArchiLibrary.Controllers.V1
 {
-    [ApiController]
-    [Route("catalog/v{version:apiVersion}/[controller]")]
-    [ApiVersion("1.0")]
-    // adding new version
-    // [ApiVersion("2.0")]
 
     // set a version to deprecated
     // [ApiVersion("1.0", Deprecated = true)]
 
     // set specific methode to a specific version
     // [MapToApiVersion("2.0")]
+    [ApiVersion("1.0")]
+    [Route("/catalog/v{version:apiVersion}/[controller]")]
+    [ApiController]
     public abstract class BaseController<TContext, TModel, TController> : ControllerBase where TContext : BaseDbContext where TModel : BaseModel
     {
         protected readonly TContext _context;
@@ -46,18 +44,27 @@ namespace ArchiLibrary.controllers
         [Produces("application/json")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<IEnumerable<TModel>>> GetAll([FromQuery] ParamsModel myParams)
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetAll([FromQuery] ParamsModel myParams)
         {
+            // FILTRES
+            //this.Request.Query
+            //typeof(TModel).GetProperty()
+
+            //return await _context.Set<TModel>().Select(x => new { x.ID, x.CreatedAt }).ToListAsync();
+
             _logger.LogInformation("LOG : Get all starting");
             IQueryable<TModel> queryable = _context.Set<TModel>().Where(x => x.Active);
 
-            // check if desc query exists
-            Boolean desc = HttpContext.Request.Query.ContainsKey("desc");
+            // partial response
+            if (!string.IsNullOrWhiteSpace(myParams.Fields))
+                queryable = queryable.PartialResponse(myParams.Fields);
 
+            // check if desc query exists
+            bool desc = HttpContext.Request.Query.ContainsKey("desc");
             // Sorting
             queryable = queryable.Sort(myParams, desc);
 
-            if(!string.IsNullOrWhiteSpace(myParams.Range))
+            if (!string.IsNullOrWhiteSpace(myParams.Range))
             {
                 _logger.LogInformation("LOG : Get all starting - Pagination");
                 string[] pagination = myParams.Range.Split("-");
@@ -213,43 +220,44 @@ namespace ArchiLibrary.controllers
         private string GenerateHeaderLinks(string[] pagination, int perPage, int count)
         {
             string baseUrl = HttpContext.Request.Host + HttpContext.Request.Path + "?range=";
-            int totalCount = (int)count;
+            int totalCount = count;
 
             // building first url
             string first = baseUrl + "0-" + (perPage - 1) + "; rel=\"first\"";
 
             // bulding last url
             string last = baseUrl;
-            last += (count - perPage) + "-" + (count - 1) + "; rel=\"last\"";
+            last += count - perPage + "-" + (count - 1) + "; rel=\"last\"";
 
             // building next url
             string next = baseUrl;
-            if ((int.Parse(pagination[1])) == (totalCount - 1))
+            if (int.Parse(pagination[1]) == totalCount - 1)
             {
                 next += HttpContext.Request.Host + HttpContext.Request.Path + HttpContext.Request.QueryString.Value;
             }
-            else if ((int.Parse(pagination[1]) + perPage) > (totalCount - 1))
+            else if (int.Parse(pagination[1]) + perPage > totalCount - 1)
             {
-                next += (int.Parse(pagination[1]) + 1) + "-" + (totalCount - 1);
+                next += int.Parse(pagination[1]) + 1 + "-" + (totalCount - 1);
             }
             else
             {
-                next += (int.Parse(pagination[1]) + 1) + "-" + ((int.Parse(pagination[1]) + 1) + perPage);
+                next += int.Parse(pagination[1]) + 1 + "-" + (int.Parse(pagination[1]) + 1 + perPage);
             }
             next += "; rel=\"next\"";
 
             // building prev url
             string prev = baseUrl;
-            if ((int.Parse(pagination[0])) == 0) 
+            if (int.Parse(pagination[0]) == 0)
             {
                 prev = HttpContext.Request.Host + HttpContext.Request.Path + HttpContext.Request.QueryString.Value;
-            } else if ((int.Parse(pagination[0]) - perPage) < 0)
+            }
+            else if (int.Parse(pagination[0]) - perPage < 0)
             {
                 prev = baseUrl + "0-" + (int.Parse(pagination[0]) - 1);
             }
             else
             {
-                prev += (int.Parse(pagination[0]) - perPage) + "-" + (int.Parse(pagination[0]) - 1);
+                prev += int.Parse(pagination[0]) - perPage + "-" + (int.Parse(pagination[0]) - 1);
             }
             prev += "; rel=\"prev\"";
 

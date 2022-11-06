@@ -34,12 +34,14 @@ namespace ArchiLibrary.Extensions
                 if (hasDesc && string.IsNullOrWhiteSpace(myParams.Desc))
                 {
                     localQuery = localQuery.OrderByDescending(lambda);
-                } else
+                }
+                else
                 {
                     localQuery = localQuery.OrderBy(lambda);
                 }
 
-                if (ascSortingParams.Length > 1){
+                if (ascSortingParams.Length > 1)
+                {
                     for (int i = 1; i < ascSortingParams.Length; i++)
                     {
                         string champIte = ascSortingParams[i];
@@ -55,14 +57,15 @@ namespace ArchiLibrary.Extensions
                         if (hasDesc && string.IsNullOrWhiteSpace(myParams.Desc))
                         {
                             localQuery = localQuery.ThenByDescending(lambdaIte);
-                        } else
+                        }
+                        else
                         {
                             localQuery = localQuery.ThenBy(lambdaIte);
                         }
                     }
                 }
             }
-            
+
             if (!string.IsNullOrWhiteSpace(myParams.Desc))
             {
                 var descSortingParams = myParams.Desc.Split(",");
@@ -77,7 +80,7 @@ namespace ArchiLibrary.Extensions
                 var lambda = Expression.Lambda<Func<TModel, object>>(o, parameter);
 
                 // use the lambda expression
-                if(!string.IsNullOrWhiteSpace(myParams.Sort))
+                if (!string.IsNullOrWhiteSpace(myParams.Sort))
                 {
                     localQuery = localQuery.ThenByDescending(lambda);
                 }
@@ -108,22 +111,20 @@ namespace ArchiLibrary.Extensions
             return localQuery;
         }
 
-        public static IOrderedQueryable<TModel> PartialResearch(this IQueryable<TModel> query, PartialSearchParams myParams)
+        public static IQueryable<TModel> PartialResponse<dynamic>(this IQueryable<TModel> query, String fields)
         {
-
-            if (!string.IsNullOrWhiteSpace(myParams.Fields))
+            var ascSortingParams = fields.Split(",");
+            foreach (var field in ascSortingParams)
             {
-                var ascSortingParams = myParams.Fields.Split(",");
-                foreach(var field in ascSortingParams)
-                {
-                    // create a lambda expression
-                    var parameterIte = Expression.Parameter(typeof(TModel), "x");
-                    var propertyIte = Expression.Property(parameterIte, field);
-
-                    var oIte = Expression.Convert(propertyIte, typeof(object));
-                    var lambdaIte = Expression.Lambda<Func<TModel, object>>(oIte, parameterIte);
-                    query = query.
-                }
+                // create a lambda expression
+                var parameter = Expression.Parameter(typeof(TModel), "x");
+                var properties = 
+                    
+                var o = Expression.Convert(property, typeof(object));
+                var lambda = Expression.Lambda<Func<TModel, int, TModel>>(o, parameter);
+                query = query.Select(lambda);
             }
+            return query;
         }
+    }
 }
