@@ -1,7 +1,9 @@
 ﻿using ArchiLibrary.Extensions.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
@@ -104,7 +106,7 @@ namespace ArchiLibrary.Extensions
 
                         var propertyIte = Expression.Property(parameterIte, champIte);
                         var oIte = Expression.Convert(propertyIte, typeof(object));
-                        
+
                         var lambdaIte = Expression.Lambda<Func<TModel, object>>(oIte, parameterIte);
 
                         // use the lambda expression
@@ -116,49 +118,159 @@ namespace ArchiLibrary.Extensions
             return localQuery;
         }
 
-        public static IQueryable<TModel> PartialResponse<TModel>(this IQueryable<TModel> query, String fields)
+        public static IQueryable<dynamic> PartialResponse<TModel>(this IQueryable<TModel> query, String fields)
         {
             var fieldsArray = fields.Split(",", StringSplitOptions.RemoveEmptyEntries);
-            
+
             // creates: parameter x with the type dynamic
             var parameter = Expression.Parameter(typeof(TModel), "x");
 
-            // creates: [ x.Name, x.ID ... ]
-            var properties = fieldsArray.Select(x => Expression.Property(parameter, x));
+            // only get fields of the model
+            List<string> fieldsModel = typeof(TModel).GetProperties().Select(x => x.Name.ToLower()).ToList();
+            List<string> untrimmedFields = new List<string>();
+            foreach (var field in fieldsModel)
+            {
+                if (fieldsArray.Contains(field.ToLower()))
+                    untrimmedFields.Add(field);
+            }
 
-            // creates: foreach elem do: Name = elem.Name
-            var bindings = properties.Select(x => Expression.Bind(x.Member, x));
-
-            // creates: dynamic object
-            //var dynamicObject = ;
-
-            // creates: new { Name = x.Name, ID = x.ID ... }
-            var dict = DynamicClassFactory.CreateType(fieldsArray.Select(f => typeof(TModel).GetProperty(f, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase))
+            var properties = untrimmedFields
+                        .Select(f => typeof(TModel).GetProperty(f, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase))
                         .Select(p => new DynamicProperty(p.Name, p.PropertyType))
-                        .ToList(), false);
+                        .ToList();
 
-            var newStuff = Expression.New(dict);
-            var members = Expression.MemberInit(newStuff, bindings);
-            //var members = Expression.MemberInit(Expression.New(typeof(dynamic)), bindings);
+            // create a dynamic type
+            var resultType = DynamicClassFactory.CreateType(properties, false);
 
-            // creates: x => new { Name = x.Name, ID = x.ID ... }
-            var lambda = Expression.Lambda<Func<TModel, dynamic>>(members, parameter);
+            // create the : x = x.Name
+            var bindings = properties.Select(p => Expression.Bind(resultType.GetProperty(p.Name), Expression.Property(parameter, p.Name)));
 
-            return (dynamic)query.Select(lambda);
+            // initialize the dynamic type 
+            var result = Expression.MemberInit(Expression.New(resultType), bindings);
 
-            //var properties = fieldsArray
-            //            .Select(f => typeof(TModel).GetProperty(f, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase))
-            //            .Select(p => new DynamicProperty(p.Name, p.PropertyType))
-            //            .ToList();
+            var lambda = Expression.Lambda<Func<TModel, dynamic>>(result, parameter);
+            var query2 = (dynamic)query.Select(lambda);
+            return (IQueryable<dynamic>)query2;
+        }
 
-            //var resultType = DynamicClassFactory.CreateType(properties, false);
-            //var bindings = properties.Select(p => Expression.Bind(resultType.GetProperty(p.Name), Expression.Property(parameter, p.Name)));
-            //var result = Expression.MemberInit(Expression.New(resultType), bindings);
+        public static IQueryable<TModel> FilterResponses<TModel>(this IQueryable<TModel> query, IDictionary<PropertyInfo, string> keys)
+        {
+            // initialize the body of predicate
+            BinaryExpression expression = null;
+            // create the parameter in our lambda expression
+            var parameter = Expression.Parameter(typeof(TModel), "x");
 
-            //var lambda = Expression.Lambda<Func<TModel, dynamic>>(result, parameter);
-            //query = (dynamic)query.Select(lambda);
+            // making a list of binary expressions
+            IList<BinaryExpression> exps = new List<BinaryExpression>();
 
-            //return query;
+            foreach (var key in keys)
+            {
+                BinaryExpression localExpression = null;
+                // setting up the property
+                var prop = Expression.Property(parameter, key.Key.Name);
+
+                // String type
+                if(key.Key.PropertyType == typeof(string))
+                {
+                    // from { "name": "hello,yes,wow" } to [ x.name == "hello", x.name == "yes", x.name == "wow" ]
+                    List<BinaryExpression> equalExpressions = key.Value.Split(",").Select(x => Expression.Equal(prop, Expression.Constant(x))).ToList();
+                    // creating the full binary expression with all the Or
+                    localExpression = equalExpressions.First();
+                    if(equalExpressions.Count() > 1)
+                        foreach(var value in equalExpressions.Skip(1))
+                        {
+                            localExpression = Expression.Or(localExpression, value);
+                        }
+                }
+
+                // Integer & Datetime type
+                if(key.Key.PropertyType == typeof(int) || key.Key.PropertyType == typeof(DateTime))
+                {
+                    // Range
+                    if(key.Value.First() == '[' && key.Value.Last() == ']')
+                    {
+                        // from { "rating": "[4,5]" } to [ x.rating == "hello", x.rating == "yes", x.rating == "wow" ]
+                        string[] bothParties = key.Value.Trim('[', ']').Split(",");
+                        // if (bothParties.Length > 2) return BadRequest(); this is not possible here
+
+                        if (bothParties[0] != string.Empty && bothParties[1] != string.Empty)
+                        {
+                            ConstantExpression leftConst, rightConst;
+                            if(key.Key.PropertyType == typeof(int))
+                            {
+                                leftConst = Expression.Constant(int.Parse(bothParties[0]));
+                                rightConst = Expression.Constant(int.Parse(bothParties[1]));
+                            } else
+                            {
+                                leftConst = Expression.Constant(DateTime.Parse(bothParties[0]));
+                                rightConst = Expression.Constant(DateTime.Parse(bothParties[1]));
+                            }
+
+                            // creating the ( x.rating >= 4 ) and the ( x.rating <= 5 )
+                            BinaryExpression leftSideExpression = Expression.GreaterThanOrEqual(prop, leftConst);
+                            BinaryExpression rightSideExpression = Expression.LessThanOrEqual(prop, rightConst);
+                            
+                            localExpression = Expression.And(leftSideExpression, rightSideExpression);
+                        }
+
+                        if (bothParties[0] == string.Empty && bothParties[1] != string.Empty)
+                        {
+                            ConstantExpression rightConst;
+                            if (key.Key.PropertyType == typeof(int))
+                            {
+                                rightConst = Expression.Constant(int.Parse(bothParties[1]));
+                            }
+                            else
+                            {
+                                rightConst = Expression.Constant(DateTime.Parse(bothParties[1]));
+                            }
+                            BinaryExpression rightSideExpression = Expression.LessThanOrEqual(prop, rightConst);
+
+                            localExpression = rightSideExpression;
+                        }
+
+                        if (bothParties[0] != string.Empty && bothParties[1] == string.Empty)
+                        {
+                            ConstantExpression leftConst;
+                            if (key.Key.PropertyType == typeof(int))
+                            {
+                                leftConst = Expression.Constant(int.Parse(bothParties[0]));
+                            }
+                            else
+                            {
+                                leftConst = Expression.Constant(DateTime.Parse(bothParties[0]));
+                            }
+                            BinaryExpression leftSideExpression = Expression.GreaterThanOrEqual(prop, leftConst);
+
+                            localExpression = leftSideExpression;
+                        }
+                    }
+                    else
+                    {
+                        // from { "rating": "4,5" or "4" or "4,5,6,8,9..." } to [ x.rating == 4, x.rating == 5 ]
+                        var equalExpressions = key.Value.Split(",").Select(x => Expression.Equal(prop, Expression.Constant(x))).ToList();
+                        // if (bothParties.Length > 2) return BadRequest(); this is not possible here
+                        localExpression = equalExpressions.First();
+                        if (equalExpressions.Count() > 1)
+                            foreach (var value in equalExpressions.Skip(1))
+                            {
+                                localExpression = Expression.Or(localExpression, value);
+                            }
+                    }
+                }
+
+                exps.Add(localExpression);
+            }
+
+            expression = exps.First();
+            foreach(var bExp in exps.Skip(1))
+            {
+                expression = Expression.And(expression, bExp);
+            }
+
+            var lambda = Expression.Lambda<Func<TModel, bool>>(expression, parameter);
+
+            return query.Where(lambda);
         }
     }
 }

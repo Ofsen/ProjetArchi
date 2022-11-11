@@ -9,8 +9,10 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
+using System;
 using System.Linq.Expressions;
 using System.Net;
+using System.Reflection;
 
 namespace ArchiLibrary.Controllers.V1
 {
@@ -46,24 +48,30 @@ namespace ArchiLibrary.Controllers.V1
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetAll([FromQuery] ParamsModel myParams)
         {
-            // FILTRES
-            //this.Request.Query
-            //typeof(TModel).GetProperty()
-
-            //return await _context.Set<TModel>().Select(x => new { x.ID, x.CreatedAt }).ToListAsync();
-
             _logger.LogInformation("LOG : Get all starting");
             IQueryable<TModel> queryable = _context.Set<TModel>().Where(x => x.Active);
 
-            // partial response
-            if (!string.IsNullOrWhiteSpace(myParams.Fields))
-                queryable = queryable.PartialResponse(myParams.Fields);
+            // FILTERS
+            // gets the properties of TModel
+            var modelProps = typeof(TModel).GetProperties();
+            // gets the queries as [ name, slogan ... ] but also Fields, Sort ... etc
+            var queries = this.Request.Query;
+            // a setup to get a dictionary of key,value
+            IDictionary<PropertyInfo, string> myKeys = new Dictionary<PropertyInfo, string>();
+            foreach(var prop in modelProps)
+            {
+                if(queries.ContainsKey(prop.Name))
+                    myKeys.Add(prop, queries[prop.Name]);
+            }
+            if (myKeys.Count != 0)
+                queryable = queryable.FilterResponses(myKeys);
 
+            // SORTING
             // check if desc query exists
             bool desc = HttpContext.Request.Query.ContainsKey("desc");
-            // Sorting
             queryable = queryable.Sort(myParams, desc);
 
+            // PAGINATION
             if (!string.IsNullOrWhiteSpace(myParams.Range))
             {
                 _logger.LogInformation("LOG : Get all starting - Pagination");
@@ -86,6 +94,10 @@ namespace ArchiLibrary.Controllers.V1
                 HttpContext.Response.Headers.Add("Content-Range", myParams.Range + "/" + perPage);
                 HttpContext.Response.Headers.Add("Accept-Range", "element 50");
             }
+
+            // PARTIAL RESPONSE
+            if (!string.IsNullOrWhiteSpace(myParams.Fields))
+                return await queryable.PartialResponse(myParams.Fields).ToListAsync();
 
             _logger.LogInformation("LOG : Get all finished");
             return await queryable.ToListAsync();
