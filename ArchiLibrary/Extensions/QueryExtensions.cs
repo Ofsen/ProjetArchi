@@ -174,7 +174,7 @@ namespace ArchiLibrary.Extensions
                 {
                     // from { "name": "hello,yes,wow" } to [ x.name == "hello", x.name == "yes", x.name == "wow" ]
                     List<BinaryExpression> equalExpressions = key.Value.Split(",").Select(x => Expression.Equal(prop, Expression.Constant(x))).ToList();
-                    // creating the full binary expression with all the Or
+                    // creating the full binary expression with all the Or operators
                     localExpression = equalExpressions.First();
                     if(equalExpressions.Count() > 1)
                         foreach(var value in equalExpressions.Skip(1))
