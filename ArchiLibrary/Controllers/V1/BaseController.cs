@@ -3,15 +3,10 @@ using ArchiLibrary.Extensions;
 using ArchiLibrary.Extensions.Models;
 using ArchiLibrary.Models;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Primitives;
-using System;
 using System.Linq.Expressions;
-using System.Net;
 using System.Reflection;
 
 namespace ArchiLibrary.Controllers.V1
@@ -60,8 +55,8 @@ namespace ArchiLibrary.Controllers.V1
             IDictionary<PropertyInfo, string> myKeys = new Dictionary<PropertyInfo, string>();
             foreach(var prop in modelProps)
             {
-                if(queries.ContainsKey(prop.Name))
-                    myKeys.Add(prop, queries[prop.Name]);
+                if(queries.ContainsKey(prop.Name.ToLower()))
+                    myKeys.Add(prop, queries[prop.Name.ToLower()]);
             }
             if (myKeys.Count != 0)
                 queryable = queryable.FilterResponses(myKeys);
@@ -100,6 +95,101 @@ namespace ArchiLibrary.Controllers.V1
                 return await queryable.PartialResponse(myParams.Fields).ToListAsync();
 
             _logger.LogInformation("LOG : Get all finished");
+            return await queryable.ToListAsync();
+        }
+
+
+        /// <summary>
+        /// Get searched data
+        /// </summary>
+        /// <response code="200">An array of objects</response>
+        /// <response code="400">Bad request</response>
+        /// <returns>An array of objects</returns>
+        [HttpGet("search")]
+        [Produces("application/json")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<IEnumerable<TModel>>> SeachingEndPoint([FromQuery] IDictionary<string, string> SearchKeys)
+        {
+            if (SearchKeys.Count() == 0) return BadRequest();
+
+            _logger.LogInformation("LOG : Get searched data starting");
+            IQueryable<TModel> queryable = _context.Set<TModel>().Where(x => x.Active);
+
+            // gets the properties of TModel
+            var modelProps = typeof(TModel).GetProperties();
+            // a setup to get a dictionary of key,value
+            IDictionary<PropertyInfo, string> mySearchKeys = new Dictionary<PropertyInfo, string>();
+            foreach (var prop in modelProps)
+            {
+                if (SearchKeys.ContainsKey(prop.Name.ToLower()))
+                    mySearchKeys.Add(prop, SearchKeys[prop.Name.ToLower()]);
+            }
+
+            // initialize the body of predicate
+            BinaryExpression expression = null;
+            // create the parameter in our lambda expression
+            ParameterExpression parameter = Expression.Parameter(typeof(TModel), "x");
+
+            // making a list of binary expressions
+            IList<BinaryExpression> exps = new List<BinaryExpression>();
+
+            foreach (var key in mySearchKeys)
+            {
+                BinaryExpression localExpression = null;
+
+                // setting up the property
+                var prop = Expression.Property(parameter, key.Key.Name);
+                // from { "name": "hello,yes,wow" } to { "name": [ "hello", "yes", "wow" ] to [ x.name == "hello", x.name == "yes", x.name == "wow" ]
+                List<string> arrayExps = key.Value.Split(",").ToList();
+                List<BinaryExpression> likeExpressions = new List<BinaryExpression>();
+                foreach(var e in arrayExps)
+                {
+                    // gets the method for ( %{value}%, %{value} or {value}% )
+                    MethodInfo refMethod;
+                    MethodCallExpression resultExps;
+                    if(e.StartsWith('*') && e.EndsWith('*'))
+                    {
+                        refMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+                        resultExps = Expression.Call(prop, refMethod, Expression.Constant(e.Trim('*')));
+                    } else if (!e.StartsWith('*') && e.EndsWith('*'))
+                    {
+                        refMethod = typeof(string).GetMethod("StartsWith", new[] { typeof(string) });
+                        resultExps = Expression.Call(prop, refMethod, Expression.Constant(e.Trim('*')));
+                    } else if (e.StartsWith('*') && !e.EndsWith('*'))
+                    {
+                        refMethod = typeof(string).GetMethod("EndsWith", new[] { typeof(string) });
+                        resultExps = Expression.Call(prop, refMethod, Expression.Constant(e.Trim('*')));
+                    } else
+                    {
+                        refMethod = typeof(string).GetMethod("Equals", new[] { typeof(string) });
+                        resultExps = Expression.Call(prop, refMethod, Expression.Constant(e.Trim('*') ));
+                    }
+                    likeExpressions.Add(Expression.Equal(resultExps, Expression.Constant(true)));
+                }
+
+                // creating the full binary expression with all the Or's
+                localExpression = likeExpressions.First();
+                if (likeExpressions.Count() > 1)
+                    foreach (var value in likeExpressions.Skip(1))
+                    {
+                        localExpression = Expression.Or(localExpression, value);
+                    }
+
+                exps.Add(localExpression);
+            }
+
+            // creating the full binary expression with all the And's
+            expression = exps.First();
+            foreach (var bExp in exps.Skip(1))
+            {
+                expression = Expression.And(expression, bExp);
+            }
+
+            var lambda = Expression.Lambda<Func<TModel, bool>>(expression, parameter);
+            queryable = queryable.Where(lambda);
+
+            _logger.LogInformation("LOG : Get searched data finished");
             return await queryable.ToListAsync();
         }
 
