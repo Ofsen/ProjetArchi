@@ -23,9 +23,9 @@ namespace ArchiLibrary.Controllers.V1
     public abstract class BaseController<TContext, TModel, TController> : ControllerBase where TContext : BaseDbContext where TModel : BaseModel
     {
         protected readonly TContext _context;
-        protected readonly ILogger<TController> _logger;
+        protected readonly ILogger<TController>? _logger;
 
-        public BaseController(TContext context, ILogger<TController> logger)
+        public BaseController(TContext context, ILogger<TController>? logger = null)
         {
             _context = context;
             _logger = logger;
@@ -43,7 +43,7 @@ namespace ArchiLibrary.Controllers.V1
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<IEnumerable<dynamic>>> GetAll([FromQuery] ParamsModel myParams)
         {
-            _logger.LogInformation("LOG : Get all starting");
+            MyLogger("LOG : Get all starting");
             IQueryable<TModel> queryable = _context.Set<TModel>().Where(x => x.Active);
 
             // FILTERS
@@ -69,7 +69,7 @@ namespace ArchiLibrary.Controllers.V1
             // PAGINATION
             if (!string.IsNullOrWhiteSpace(myParams.Range))
             {
-                _logger.LogInformation("LOG : Get all starting - Pagination");
+                MyLogger("LOG : Get all starting - Pagination");
                 string[] pagination = myParams.Range.Split("-");
                 int perPage = int.Parse(pagination[1]) - int.Parse(pagination[0]) + 1;
 
@@ -94,7 +94,7 @@ namespace ArchiLibrary.Controllers.V1
             if (!string.IsNullOrWhiteSpace(myParams.Fields))
                 return await queryable.PartialResponse(myParams.Fields).ToListAsync();
 
-            _logger.LogInformation("LOG : Get all finished");
+            MyLogger("LOG : Get all finished");
             return await queryable.ToListAsync();
         }
 
@@ -113,7 +113,7 @@ namespace ArchiLibrary.Controllers.V1
         {
             if (SearchKeys.Count() == 0) return BadRequest();
 
-            _logger.LogInformation("LOG : Get searched data starting");
+            MyLogger("LOG : Get searched data starting");
             IQueryable<TModel> queryable = _context.Set<TModel>().Where(x => x.Active);
 
             // gets the properties of TModel
@@ -189,7 +189,7 @@ namespace ArchiLibrary.Controllers.V1
             var lambda = Expression.Lambda<Func<TModel, bool>>(expression, parameter);
             queryable = queryable.Where(lambda);
 
-            _logger.LogInformation("LOG : Get searched data finished");
+            MyLogger("LOG : Get searched data finished");
             return await queryable.ToListAsync();
         }
 
@@ -206,15 +206,15 @@ namespace ArchiLibrary.Controllers.V1
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<TModel>> GetById([FromRoute] int id)
         {
-            _logger.LogInformation("LOG : Get by ID starting");
+            MyLogger("LOG : Get by ID starting");
             var item = await _context.Set<TModel>().SingleOrDefaultAsync(x => x.ID == id);
             if (item == null || !item.Active)
             {
-                _logger.LogInformation("LOG : Get by ID - ERROR Not Found");
+                MyLogger("LOG : Get by ID - ERROR Not Found");
                 return NotFound();
             }
 
-            _logger.LogInformation("LOG : Get by ID finished");
+            MyLogger("LOG : Get by ID finished");
             return item;
         }
 
@@ -229,11 +229,11 @@ namespace ArchiLibrary.Controllers.V1
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> PostItem([FromBody] TModel item)
         {
-            _logger.LogInformation("LOG : Add new Element starting");
+            MyLogger("LOG : Add new Element starting");
             await _context.AddAsync(item);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("LOG : Add new Element finished");
+            MyLogger("LOG : Add new Element finished");
             return CreatedAtAction("GetById", new { id = item.ID }, item);
         }
 
@@ -253,21 +253,21 @@ namespace ArchiLibrary.Controllers.V1
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<TModel>> PutItem([FromRoute] int id, [FromBody] TModel item)
         {
-            _logger.LogInformation("LOG : Update Element starting");
+            MyLogger("LOG : Update Element starting");
             if (id != item.ID)
             {
-                _logger.LogInformation("LOG : Update Element - ERROR Bad Request");
+                MyLogger("LOG : Update Element - ERROR Bad Request");
                 return BadRequest();
             }
 
             if (!ItemExists(id))
             {
-                _logger.LogInformation("LOG : Update Element - ERROR Not Found");
+                MyLogger("LOG : Update Element - ERROR Not Found");
                 return NotFound();
             }
 
             //_context.Entry(item).State = EntityState.Modified;
-            _logger.LogInformation("LOG : Update Element finished");
+            MyLogger("LOG : Update Element finished");
             _context.Update(item);
             await _context.SaveChangesAsync();
 
@@ -287,17 +287,17 @@ namespace ArchiLibrary.Controllers.V1
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<TModel>> DeleteItem([FromRoute] int id)
         {
-            _logger.LogInformation("LOG : Delete an element starting");
+            MyLogger("LOG : Delete an element starting");
             var item = await _context.Set<TModel>().FindAsync(id);
             if (item == null)
             {
-                _logger.LogInformation("LOG : Delete an element - ERROR Bad Request");
+                MyLogger("LOG : Delete an element - ERROR Bad Request");
                 return BadRequest();
             }
             //_context.Entry(item).State = EntityState.Deleted;
             _context.Remove(item);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("LOG : Delete an element finished");
+            MyLogger("LOG : Delete an element finished");
             return item;
         }
 
@@ -308,7 +308,7 @@ namespace ArchiLibrary.Controllers.V1
         /// <returns>Boolean</returns>
         private bool ItemExists(int id)
         {
-            _logger.LogInformation("LOG : checks if element exists");
+            MyLogger("LOG : checks if element exists");
             return _context.Set<TModel>().Any(x => x.ID == id);
         }
 
@@ -364,6 +364,12 @@ namespace ArchiLibrary.Controllers.V1
             prev += "; rel=\"prev\"";
 
             return first + ", " + prev + ", " + next + ", " + last;
+        }
+
+        private void MyLogger(string log)
+        {
+            if(_logger != null)
+                _logger.LogInformation(log);
         }
     }
 }
