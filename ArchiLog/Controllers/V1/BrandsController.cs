@@ -8,7 +8,7 @@ namespace ArchiLog.Controllers.V1
 {
     public class BrandsController : BaseController<ArchiLogDbContext, Brand, BrandsController>
     {
-        public BrandsController(ArchiLogDbContext context, ILogger<BrandsController> logger) : base(context, logger)
+        public BrandsController(ArchiLogDbContext context, ILogger<BrandsController>? logger = null) : base(context, logger)
         {
         }
     }
