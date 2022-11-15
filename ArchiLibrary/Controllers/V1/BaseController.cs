@@ -41,7 +41,7 @@ namespace ArchiLibrary.Controllers.V1
         [Produces("application/json")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<IEnumerable<dynamic>>> GetAll([FromQuery] ParamsModel myParams)
+        public async Task<ActionResult<IEnumerable<dynamic>>> GetAll([FromQuery] ParamsModel? myParams = null)
         {
             MyLogger("LOG : Get all starting");
             IQueryable<TModel> queryable = _context.Set<TModel>().Where(x => x.Active);

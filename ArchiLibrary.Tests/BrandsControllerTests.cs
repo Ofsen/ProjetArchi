@@ -33,16 +33,19 @@ namespace ArchiLibrary.Tests
             _brandsController = new BrandsController(_context);
         }
 
-        [Fact]
-        public async void GetAll()
-        {
-            _context.Database.EnsureDeleted();
-            _context.Database.EnsureCreated();
+        //[Fact]
+        //public async void GetAll()
+        //{
+        //    _context.Database.EnsureDeleted();
+        //    _context.Database.EnsureCreated();
 
-            await _brandsController.PostItem(new Brand { Name = "newName" });
+        //    _context.Brands.AddRange(new Brand { Name = "newName" }, new Brand { Name = "newName2" });
+        //    _context.SaveChanges();
 
-            Assert.Single(_context.Brands);
-        }
+        //    await _brandsController.GetAll();
+
+        //    Assert.Collection();
+        //}
 
         [Fact]
         public async void GetById()
