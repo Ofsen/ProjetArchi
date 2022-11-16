@@ -6,7 +6,7 @@ namespace ArchiLog.Data
 {
     public class ArchiLogDbContext : BaseDbContext
     {
-        public ArchiLogDbContext(DbContextOptions<ArchiLogDbContext> options)
+        public ArchiLogDbContext(DbContextOptions<ArchiLogDbContext> options) : base(options)
         {
         }
 

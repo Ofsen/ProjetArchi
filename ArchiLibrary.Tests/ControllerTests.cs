@@ -10,27 +10,28 @@ using System;
 
 namespace ArchiLibrary.Tests
 {
-    //public class Modal : BaseModel {}
-    //public class Context : BaseDbContext
-    //{
-    //    public Context(DbContextOptions<Context> options) { }
-    //}
-    //public class Controller : BaseController<BaseDbContext, Modal, Controller>
-    //{
-    //    public Controller(BaseDbContext context) : base(context)
-    //    {
-    //    }
-    //}
-
-    public class BrandsControllerTests
+    public class Modal : BaseModel { }
+    public class Context : BaseDbContext
     {
-        private readonly ArchiLogDbContext _context;
-        private readonly BrandsController _brandsController;
+        public Context(DbContextOptions<Context> options) : base(options) { }
+        public DbSet<Modal> Modals { get; set; }
+    }
+    public class Controller : BaseController<BaseDbContext, Modal, Controller>
+    {
+        public Controller(BaseDbContext context) : base(context)
+        {
+        }
+    }
 
-        public BrandsControllerTests()
+    public class ControllerTests
+    {
+        private readonly Context _context;
+        private readonly Controller _controller;
+
+        public ControllerTests()
         {
             _context = ContextGenerator.Generate();
-            _brandsController = new BrandsController(_context);
+            _controller = new Controller(_context);
         }
 
         //[Fact]
@@ -42,7 +43,7 @@ namespace ArchiLibrary.Tests
         //    _context.Brands.AddRange(new Brand { Name = "newName" }, new Brand { Name = "newName2" });
         //    _context.SaveChanges();
 
-        //    await _brandsController.GetAll();
+        //    await _controller.GetAll();
 
         //    Assert.Collection();
         //}
@@ -53,10 +54,10 @@ namespace ArchiLibrary.Tests
             _context.Database.EnsureDeleted();
             _context.Database.EnsureCreated();
 
-            var id = _context.Brands.Add(new Brand { Name = "newName" }).Entity.ID;
+            var id = _context.Modals.Add(new Modal()).Entity.ID;
             _context.SaveChanges();
 
-            var result = await _brandsController.GetById(id);
+            var result = await _controller.GetById(id);
             Assert.NotNull(result);
         }
 
@@ -66,19 +67,19 @@ namespace ArchiLibrary.Tests
             _context.Database.EnsureDeleted();
             _context.Database.EnsureCreated();
 
-            await _brandsController.PostItem(new Brand { Name = "newName" });
+            await _controller.PostItem(new Modal());
 
-            Assert.Single(_context.Brands);
+            Assert.Single(_context.Modals);
         }
     }
 
     public static class ContextGenerator
     {
-        public static ArchiLogDbContext Generate()
+        public static Context Generate()
         {
-            var options = new DbContextOptionsBuilder<ArchiLogDbContext>()
+            var options = new DbContextOptionsBuilder<Context>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
-            return new ArchiLogDbContext(options);
+            return new Context(options);
         }
     }
 }

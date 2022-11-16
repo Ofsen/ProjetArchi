@@ -10,6 +10,10 @@ namespace ArchiLibrary.Data
 {
     public abstract class BaseDbContext : DbContext
     {
+        public BaseDbContext(DbContextOptions options) : base(options)
+        {
+        }
+
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             ChangeCreatedState();
