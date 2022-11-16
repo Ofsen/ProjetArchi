@@ -77,7 +77,7 @@ namespace ArchiLibrary.Controllers.V1
                     return BadRequest();
 
                 int count = queryable.Count();
-                if (int.Parse(pagination[1]) > count)
+                if (int.Parse(pagination[1]) >= count)
                     return BadRequest();
 
                 queryable = queryable.Skip(int.Parse(pagination[0])).Take(perPage);
@@ -332,23 +332,23 @@ namespace ArchiLibrary.Controllers.V1
             last += count - perPage + "-" + (count - 1) + "; rel=\"last\"";
 
             // building next url
-            string next = baseUrl;
+            string next;
             if (int.Parse(pagination[1]) == totalCount - 1)
             {
-                next += HttpContext.Request.Host + HttpContext.Request.Path + HttpContext.Request.QueryString.Value;
+                next = HttpContext.Request.Host + HttpContext.Request.Path + HttpContext.Request.QueryString.Value;
             }
             else if (int.Parse(pagination[1]) + perPage > totalCount - 1)
             {
-                next += int.Parse(pagination[1]) + 1 + "-" + (totalCount - 1);
+                next = baseUrl + int.Parse(pagination[1]) + 1 + "-" + (totalCount - 1);
             }
             else
             {
-                next += int.Parse(pagination[1]) + 1 + "-" + (int.Parse(pagination[1]) + 1 + perPage);
+                next = baseUrl + int.Parse(pagination[1]) + 1 + "-" + (int.Parse(pagination[1]) + 1 + perPage);
             }
             next += "; rel=\"next\"";
 
             // building prev url
-            string prev = baseUrl;
+            string prev;
             if (int.Parse(pagination[0]) == 0)
             {
                 prev = HttpContext.Request.Host + HttpContext.Request.Path + HttpContext.Request.QueryString.Value;
@@ -359,7 +359,7 @@ namespace ArchiLibrary.Controllers.V1
             }
             else
             {
-                prev += int.Parse(pagination[0]) - perPage + "-" + (int.Parse(pagination[0]) - 1);
+                prev = baseUrl + (int.Parse(pagination[0]) - perPage) + "-" + (int.Parse(pagination[0]) - 1);
             }
             prev += "; rel=\"prev\"";
 
