@@ -31,14 +31,13 @@ builder.Services.AddSwaggerGen(options =>
     //    Description = "An ASP.NET Core Web API made by Entity Framework Core and a Library that simplifies models, controllers & context creation."
     //});
 
-    options.AddSecurityDefinition("Login", new OpenApiSecurityScheme
+    options.AddSecurityDefinition("token", new OpenApiSecurityScheme
     {
-        In = ParameterLocation.Header,
-        Description = "Please enter token",
-        Name = "Authorization",
         Type = SecuritySchemeType.Http,
         BearerFormat = "JWT",
-        Scheme = "bearer"
+        Scheme = "Bearer",
+        In = ParameterLocation.Header,
+        Name = "Authorization",
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -49,7 +48,7 @@ builder.Services.AddSwaggerGen(options =>
                 Reference = new OpenApiReference
                 {
                     Type=ReferenceType.SecurityScheme,
-                    Id="Bearer"
+                    Id="token"
                 }
             },
             new string[]{}
