@@ -1,0 +1,6 @@
+ARHAB Koceila - Tests unitaires
+BEN FRAJ Fairouz - Tris
+BOURAS Nadia - Pagination
+OUERDANE Yanis - Spérviseur/Réponses Partielles et Filtres
+
+(En groupe) Authentification, Versionning, Commentaires, Logs et Recherches
