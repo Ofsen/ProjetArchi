@@ -1,6 +1,6 @@
 # ArchiLog
 
-An ASP.NET library that helps set up a fully functionning REST API.
+An ASP.NET library that helps set up a fully functioning REST API.
 
 ### Features
 - CRUD operations
